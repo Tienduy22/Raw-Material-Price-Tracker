@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum NotificationType {
+  WEEKLY_SUMMARY
+  PRICE_ALERT
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+// ─── Business ───────────────────────────────────────
+model Business {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  users               User[]
+  ingredientCategories IngredientCategory[]
+  ingredients         Ingredient[]
+  suppliers           Supplier[]
+  notificationLogs    NotificationLog[]
+}
+
+// ─── User ────────────────────────────────────────────
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         Role     @default(STAFF)
+  createdAt    DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id])
+  businessId String
+
+  priceEntries PriceEntry[]
+}
+
+// ─── Ingredient Category ─────────────────────────────
+model IngredientCategory {
+  id   String @id @default(uuid())
+  name String
+
+  business   Business @relation(fields: [businessId], references: [id])
+  businessId String
+
+  ingredients Ingredient[]
+}
+
+// ─── Ingredient ──────────────────────────────────────
+model Ingredient {
+  id       String  @id @default(uuid())
+  name     String
+  unit     String
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id])
+  businessId String
+
+  category   IngredientCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+
+  priceEntries PriceEntry[]
+  priceAlerts  PriceAlert[]
+}
+
+// ─── Supplier ────────────────────────────────────────
+model Supplier {
+  id       String  @id @default(uuid())
+  name     String
+  phone    String?
+  note     String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id])
+  businessId String
+
+  priceEntries PriceEntry[]
+}
+
+// ─── Price Entry ─────────────────────────────────────
+model PriceEntry {
+  id          String   @id @default(uuid())
+  price       Decimal  @db.Decimal(12, 2)
+  quantity    Decimal  @db.Decimal(10, 3)
+  purchasedAt DateTime
+  note        String?
+  createdAt   DateTime @default(now())
+
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId String
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  supplierId String
+
+  recordedBy   User   @relation(fields: [recordedById], references: [id])
+  recordedById String
+}
+
+// ─── Price Alert ─────────────────────────────────────
+model PriceAlert {
+  id               String  @id @default(uuid())
+  thresholdPercent Float
+  isActive         Boolean @default(true)
+  createdAt        DateTime @default(now())
+
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId String
+}
+
+// ─── Notification Log ─────────────────────────────────
+model NotificationLog {
+  id        String             @id @default(uuid())
+  type      NotificationType
+  status    NotificationStatus
+  sentAt    DateTime           @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id])
+  businessId String
+}
